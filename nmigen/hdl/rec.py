@@ -78,7 +78,11 @@ class Layout:
 # Unlike most Values, Record *can* be subclassed.
 class Record(Value):
     @staticmethod
-    def like(other, *, name=None, name_suffix=None, src_loc_at=0):
+    def like(other, *, name=None, name_suffix=None, src_loc_at=0, **kwargs):
+        kw = dict()
+        kw.update(other.kwargs)
+        kw.update(kwargs)
+
         if name is not None:
             new_name = str(name)
         elif name_suffix is not None:
@@ -96,14 +100,16 @@ class Record(Value):
             field = other[field_name]
             if isinstance(field, Record):
                 fields[field_name] = Record.like(field, name=concat(new_name, field_name),
-                                                 src_loc_at=1 + src_loc_at)
+                                                 src_loc_at=1 + src_loc_at, **kw)
             else:
                 fields[field_name] = Signal.like(field, name=concat(new_name, field_name),
-                                                 src_loc_at=1 + src_loc_at)
+                                                 src_loc_at=1 + src_loc_at, **kw)
 
-        return Record(other.layout, name=new_name, fields=fields, src_loc_at=1)
+        return Record(other.layout, name=new_name, fields=fields, src_loc_at=1, **kw)
 
-    def __init__(self, layout, *, name=None, fields=None, src_loc_at=0):
+    def __init__(self, layout, *, name=None, fields=None, src_loc_at=0, **kwargs):
+        self.kwargs = kwargs
+
         if name is None:
             name = tracer.get_var_name(depth=2 + src_loc_at, default=None)
 
@@ -128,10 +134,10 @@ class Record(Value):
             else:
                 if isinstance(field_shape, Layout):
                     self.fields[field_name] = Record(field_shape, name=concat(name, field_name),
-                                                     src_loc_at=1 + src_loc_at)
+                                                     src_loc_at=1 + src_loc_at, **kwargs)
                 else:
                     self.fields[field_name] = Signal(field_shape, name=concat(name, field_name),
-                                                     src_loc_at=1 + src_loc_at)
+                                                     src_loc_at=1 + src_loc_at, **kwargs)
 
     def __getattr__(self, name):
         return self[name]
